@@ -4,16 +4,16 @@ import java.io.File
 import java.lang.Exception
 import java.lang.StringBuilder
 
-class Agregator {
+class Aggregator {
 
     companion object {
         private val validChars = "абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ -.‘".toSet()
 
         //A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z.
-        private val engChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz,;()".toSet()
+        private val engChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toSet()
+
+        private val illegalChars = ",;()".toSet()
     }
-
-
 
     fun sanitize(inpFileName:String,outFileName:String,unvalidFileName:String){
 
@@ -58,18 +58,21 @@ class Agregator {
 
     }
 
-    fun clusterByGroups(inpFileName:String, outFileName:String){
+    fun clusterByGroups(inpFileName:String, outFileName:String,logFileName:String){
 
         val outFile = File(outFileName)
+        val logFile = File(logFileName)
+
         if (outFile.exists()) outFile.delete()
+        if (logFile.exists()) logFile.delete()
 
         val clusters = mutableListOf<Cluster>()
 
         var count = 0
         File(inpFileName).bufferedReader().forEachLine {
 
-            if (++count > 10000)
-                return@forEachLine
+            //if (++count > 10000)
+            //    return@forEachLine
 
 
             var match = false
@@ -77,8 +80,13 @@ class Agregator {
             for (cluster in clusters){
                 val pair = cluster.canAdd(it)
                 if (pair.first) {
-                    cluster.add(it)
-                    if (pair.second) cluster.updatePresenter(it)
+                    if (pair.second){
+                        cluster.add(cluster.presenter)
+                        cluster.updatePresenter(it)
+                    }
+                    else
+                        cluster.add(it)
+
                     match = true
                     break
                 }
@@ -89,6 +97,7 @@ class Agregator {
         }
 
         val outFileWriter = outFile.bufferedWriter()
+        val logFileWriter = logFile.bufferedWriter()
 
         for (cluster in clusters){
             for (name in cluster.toList()) outFileWriter.appendLine(name)
@@ -96,6 +105,9 @@ class Agregator {
         }
         outFileWriter.flush()
         outFileWriter.close()
+
+        logFileWriter.flush()
+        logFileWriter.close()
     }
 
 
@@ -105,6 +117,7 @@ class Agregator {
 
         for (ch in name){
             if (engChars.contains(ch)) return false to "character $ch is eng char"
+            if (illegalChars.contains(ch)) return false to "character $ch is illegal, name might contain several entries"
             if (!validChars.contains(ch)) return false to "character $ch is not valid"
         }
 
@@ -137,8 +150,8 @@ class Agregator {
                     //var presenterPartsPrep = if (presenterTrimmed.contains(',')||presenterTrimmed.contains(';')) presenterTrimmed.split(',',';')[0] else  presenterTrimmed
                     //var candidatePartsPrep = if (candidateTrimmed.contains(',')||candidateTrimmed.contains(';')) candidateTrimmed.split(',',';')[0] else  candidateTrimmed
 
-            var presenterParts = candidateTrimmed.split(' ').filter { it != "" }
-            var candidateParts = presenterTrimmed.split(' ').filter { it != "" }
+            var presenterParts = presenterTrimmed.split(' ')
+            var candidateParts = candidateTrimmed.split(' ')
             if (candidateParts.size > presenterParts.size) {
                 val v = candidateParts
                 candidateParts = presenterParts
@@ -146,17 +159,40 @@ class Agregator {
                 reverted = !reverted
             }
 
+            val map11 =  listOf(listOf(Triple(0,0,true)))  // Сидоров - Сидоров
+            val map22 = listOf(
+                    listOf(Triple(0,0,true),Triple(1,1,true)), // Сидоров Александр -> Сидоров Александр
+                    listOf(Triple(0,1,true),Triple(1,0,true)), // Сидоров Александр -> Александр Сидоров
+                    listOf(Triple(0,0,true),Triple(1,1,false)), // Сидоров Александр -> Сидоров А
+                    listOf(Triple(0,1,true),Triple(1,0,false))) // Сидоров Александр -> А Сидоров
+            val map33 = listOf (
+                    listOf(Triple(0,0,true),Triple(1,1,false),Triple(2,2,false)), // Сидоров Александр Петрович -> Сидоров А П
+                    listOf(Triple(0,2,false),Triple(1,0,false),Triple(2,1,false)),// Сидоров Александр Петрович -> А П Сидоров
+                    listOf(Triple(0,0,false),Triple(1,1,false),Triple(2,2,true)),// Александр Петрович Сидоров -> А П Сидоров
+                    listOf(Triple(0,1,false),Triple(1,2,false),Triple(2,0,true)))// Александр Петрович Сидоров -> Сидоров А П
+            val map21 = listOf(
+                    listOf(Triple(0,0,true)), // Сидоров Александр -> Сидоров
+                    listOf(Triple(1,0,true)))  // Александр Сидоров -> Сидоров
+            val map31 = listOf(
+                    listOf(Triple(0,0,true)), // Сидоров Александр Петрович -> Сидоров
+                    listOf(Triple(2,0,true)))  // Александр Петрович Сидоров -> Сидоров
+            val map32 = listOf(
+                    listOf(Triple(0,0,false),Triple(2,1,true)), // Александр Петрович Сидоров -> А Сидоров
+                    listOf(Triple(0,1,true),Triple(1,0,false)), // Сидоров Александр Петрович -> А Сидоров
+                    listOf(Triple(0,0,true),Triple(1,1,false)), // Сидоров Александр Петрович -> Сидоров А
+                    listOf(Triple(0,1,false),Triple(2,0,true))) // Александр Петрович Сидоров -> Сидоров А
+
             if (presenterParts.size == candidateParts.size){
                 when (presenterParts.size){
                     //1 -> return matchParts(presenterParts,candidateParts, mapOf(0 to 0)) to reverted
-                    1 -> return matchPartsForMap(presenterParts,candidateParts, map_1_1 ) to reverted
+                    1 -> return matchPartsForMap(presenterParts,candidateParts, map11 ) to reverted
                     //2 -> return (matchParts(presenterParts,candidateParts, mapOf(0 to 0,1 to 1)) ||
                     //        matchParts(presenterParts,candidateParts, mapOf(0 to 1,1 to 0))) to reverted
-                    2 -> return matchPartsForMap(presenterParts,candidateParts, map_2_2 ) to reverted
+                    2 -> return matchPartsForMap(presenterParts,candidateParts, map22 ) to reverted
                     //3 -> return (matchParts(presenterParts,candidateParts, mapOf(0 to 0, 1 to 1, 2 to 2)) ||
                     //        matchParts(presenterParts,candidateParts, mapOf(0 to 2, 1 to 0, 2 to 1)) ||
                     //        matchParts(presenterParts,candidateParts, mapOf(0 to 1, 1 to 2, 2 to 0))) to reverted
-                    3 -> return matchPartsForMap(presenterParts,candidateParts, map_3_3 ) to reverted
+                    3 -> return matchPartsForMap(presenterParts,candidateParts, map33 ) to reverted
                 }
             }
 
@@ -166,15 +202,17 @@ class Agregator {
                     //    matchParts(presenterParts,candidateParts, mapOf(0 to 1,2 to 0)) ||
                     //    matchParts(presenterParts,candidateParts, mapOf(0 to 0,1 to 1)) ||
                     //    matchParts(presenterParts,candidateParts, mapOf(0 to 1,1 to 0)) ) to reverted
-                    return matchPartsForMap(presenterParts,candidateParts, map_3_2 ) to reverted
+                    return matchPartsForMap(presenterParts,candidateParts, map32 ) to reverted
                 presenterParts.size == 3 && candidateParts.size == 1 ->
                     //return (matchParts(presenterParts,candidateParts, mapOf(0 to 0)) ||
                     //    matchParts(presenterParts,candidateParts, mapOf(2 to 0))) to reverted
-                    return matchPartsForMap(presenterParts,candidateParts, map_3_1 ) to reverted
+                    return matchPartsForMap(presenterParts,candidateParts,
+                            map31 ) to reverted
                 presenterParts.size == 2 && candidateParts.size == 1 ->
                     //return (matchParts(presenterParts,candidateParts, mapOf(0 to 0)) ||
                     //    matchParts(presenterParts,candidateParts, mapOf(1 to 0))) to reverted
-                    return matchPartsForMap(presenterParts,candidateParts, map_2_1 ) to reverted
+                    return matchPartsForMap(presenterParts,candidateParts,
+                            map21 ) to reverted
             }
 
             return false to reverted
@@ -184,14 +222,14 @@ class Agregator {
 
         private val list:MutableList<String> = mutableListOf()
 
-        private fun clearMatchResultMap(){
+       /* private fun clearMatchResultMap(){
             for (i in 0..2)
                 for (j in 0..2)
                     for (k in 0..1)
                         matchResultMap[i][j][k] = false
 
 
-        }
+        }*/
 
         fun toList()  = sequence {
             yield(presenter)
@@ -202,9 +240,10 @@ class Agregator {
 
         private fun trimValue(value:String) : String {
             val sb = StringBuilder()
+            var prev:Char? = null
           /*  var ignore = false
 
-            var prev:Char? = null
+
             for ( (idx,char) in value.withIndex()){
 
                 when(char){
@@ -226,8 +265,16 @@ class Agregator {
                 prev = char
             }*/
 
-            for (ch in value)
-                if (ch !='.') sb.append(ch)
+            for ( (idx,ch) in value.withIndex()) {
+
+                if (ch ==' ' && (idx == 0 || idx == value.length-1 || prev == ' ')) {
+                    prev = ch
+                    continue
+                }
+
+                if (ch != '.') sb.append(ch)
+                prev = ch
+            }
 
 
             return sb.toString()
@@ -236,14 +283,14 @@ class Agregator {
         //triple.third -> full match required, else prefix match is enough
         private fun matchPartsForMap(presenterParts:List<String>, candidateParts:List<String>,matchRequiredListMap:List<List<Triple<Int,Int,Boolean>>>) : Boolean {
             val matchMap = getMatchMap(presenterParts,candidateParts)
-            val result =  matchRequiredListMap.any {  matchRequiredMap ->  matchRequiredMap.all { triple -> matchMap[triple.first][triple.second][if (triple.third) 0 else 1] }}
-            clearMatchResultMap()
-            return result
+            return  matchRequiredListMap.any {  matchRequiredMap ->  matchRequiredMap.all { triple -> matchMap[triple.first][triple.second][if (triple.third) 0 else 1] }}
         }
 
         //arrray[i][j][0] = true -> full match, arrray[i][j][1] = true - pref match
-        private fun getMatchMap(presenterParts:List<String>,candidateParts:List<String>) : Array<Array<Array<Boolean>>> {
+        private fun getMatchMap(presenterParts:List<String>, candidateParts:List<String>) : Array<Array<Array<Boolean>>> {
 
+            val matchResultMap : Array<Array<Array<Boolean>>> = Array(3) { Array(3) { Array(2) { false } } }
+            //clearMatchResultMap()
             try {
 
                 for ((prIdx, presenter) in presenterParts.withIndex()) {
@@ -284,11 +331,11 @@ class Agregator {
         //private fun matchAtomValue(a:String,b:String)  = (a.startsWith(b,true))
 
         companion object{
-            private val trimChars = setOf(',','.')
+            //private val trimChars = setOf(',','.')
 
-            private val matchResultMap : Array<Array<Array<Boolean>>> = Array(3) { Array(3) { Array(2) { false } } }
+            //private val matchResultMap : Array<Array<Array<Boolean>>> = Array(3) { Array(3) { Array(2) { false } } }
 
-            private val map_1_1 =  listOf(listOf(Triple(0,0,true)))  // Сидоров - Сидоров
+            /*private val map_1_1 =  listOf(listOf(Triple(0,0,true)))  // Сидоров - Сидоров
             private val map_2_2 = listOf(
                     listOf(Triple(0,0,true),Triple(1,1,true)), // Сидоров Александр -> Сидоров Александр
                     listOf(Triple(0,1,true),Triple(1,0,true)), // Сидоров Александр -> Александр Сидоров
@@ -309,7 +356,7 @@ class Agregator {
                     listOf(Triple(0,0,false),Triple(2,1,true)), // Александр Петрович Сидоров -> А Сидоров
                     listOf(Triple(0,1,true),Triple(1,0,false)), // Сидоров Александр Петрович -> А Сидоров
                     listOf(Triple(0,0,true),Triple(1,1,false)), // Сидоров Александр Петрович -> Сидоров А
-                    listOf(Triple(0,1,false),Triple(2,0,true))) // Александр Петрович Сидоров -> Сидоров А
+                    listOf(Triple(0,1,false),Triple(2,0,true))) // Александр Петрович Сидоров -> Сидоров А*/
 
         }
     }
