@@ -71,9 +71,8 @@ class Aggregator {
         var count = 0
         File(inpFileName).bufferedReader().forEachLine {
 
-            //if (++count > 10000)
-            //    return@forEachLine
-
+            if (++count > 10000)
+                return@forEachLine
 
             var match = false
 
@@ -133,90 +132,43 @@ class Aggregator {
             presenterTrimmedBase = trimValue(presenter)
         }
 
+        //определяет можем ли мы добавить представителя в группу
+        //если кандидат матчится с представителеи и заменяет его также проверяются матчи нового представителя с каждым кандидатом //TODO
         fun canAdd(candidate:String) : Pair< Boolean, Boolean > {
 
             var reverted = false
             var candidateTrimmed = trimValue(candidate)
             var presenterTrimmed = trimValue(presenter)
 
-            if (candidateTrimmed.length > presenterTrimmed.length) {
-                val v = candidateTrimmed
-                candidateTrimmed = presenterTrimmed
-                presenterTrimmed = v
-                reverted = !reverted
-
-            }
-
-                    //var presenterPartsPrep = if (presenterTrimmed.contains(',')||presenterTrimmed.contains(';')) presenterTrimmed.split(',',';')[0] else  presenterTrimmed
-                    //var candidatePartsPrep = if (candidateTrimmed.contains(',')||candidateTrimmed.contains(';')) candidateTrimmed.split(',',';')[0] else  candidateTrimmed
-
             var presenterParts = presenterTrimmed.split(' ')
             var candidateParts = candidateTrimmed.split(' ')
+
+            //приоритет замены представителя новым кандидатом определяется сначачала по количеству его юнитов потом (если они равны) по общему размеру
             if (candidateParts.size > presenterParts.size) {
                 val v = candidateParts
                 candidateParts = presenterParts
                 presenterParts = v
                 reverted = !reverted
             }
+            else if (candidateParts.size == presenterParts.size && candidateTrimmed.length > presenterTrimmed.length) {
+                val v = candidateParts
+                candidateParts = presenterParts
+                presenterParts = v
+                reverted = !reverted
 
-            val map11 =  listOf(listOf(Triple(0,0,true)))  // Сидоров - Сидоров
-            val map22 = listOf(
-                    listOf(Triple(0,0,true),Triple(1,1,true)), // Сидоров Александр -> Сидоров Александр
-                    listOf(Triple(0,1,true),Triple(1,0,true)), // Сидоров Александр -> Александр Сидоров
-                    listOf(Triple(0,0,true),Triple(1,1,false)), // Сидоров Александр -> Сидоров А
-                    listOf(Triple(0,1,true),Triple(1,0,false))) // Сидоров Александр -> А Сидоров
-            val map33 = listOf (
-                    listOf(Triple(0,0,true),Triple(1,1,false),Triple(2,2,false)), // Сидоров Александр Петрович -> Сидоров А П
-                    listOf(Triple(0,2,false),Triple(1,0,false),Triple(2,1,false)),// Сидоров Александр Петрович -> А П Сидоров
-                    listOf(Triple(0,0,false),Triple(1,1,false),Triple(2,2,true)),// Александр Петрович Сидоров -> А П Сидоров
-                    listOf(Triple(0,1,false),Triple(1,2,false),Triple(2,0,true)))// Александр Петрович Сидоров -> Сидоров А П
-            val map21 = listOf(
-                    listOf(Triple(0,0,true)), // Сидоров Александр -> Сидоров
-                    listOf(Triple(1,0,true)))  // Александр Сидоров -> Сидоров
-            val map31 = listOf(
-                    listOf(Triple(0,0,true)), // Сидоров Александр Петрович -> Сидоров
-                    listOf(Triple(2,0,true)))  // Александр Петрович Сидоров -> Сидоров
-            val map32 = listOf(
-                    listOf(Triple(0,0,false),Triple(2,1,true)), // Александр Петрович Сидоров -> А Сидоров
-                    listOf(Triple(0,1,true),Triple(1,0,false)), // Сидоров Александр Петрович -> А Сидоров
-                    listOf(Triple(0,0,true),Triple(1,1,false)), // Сидоров Александр Петрович -> Сидоров А
-                    listOf(Triple(0,1,false),Triple(2,0,true))) // Александр Петрович Сидоров -> Сидоров А
-
-            if (presenterParts.size == candidateParts.size){
-                when (presenterParts.size){
-                    //1 -> return matchParts(presenterParts,candidateParts, mapOf(0 to 0)) to reverted
-                    1 -> return matchPartsForMap(presenterParts,candidateParts, map11 ) to reverted
-                    //2 -> return (matchParts(presenterParts,candidateParts, mapOf(0 to 0,1 to 1)) ||
-                    //        matchParts(presenterParts,candidateParts, mapOf(0 to 1,1 to 0))) to reverted
-                    2 -> return matchPartsForMap(presenterParts,candidateParts, map22 ) to reverted
-                    //3 -> return (matchParts(presenterParts,candidateParts, mapOf(0 to 0, 1 to 1, 2 to 2)) ||
-                    //        matchParts(presenterParts,candidateParts, mapOf(0 to 2, 1 to 0, 2 to 1)) ||
-                    //        matchParts(presenterParts,candidateParts, mapOf(0 to 1, 1 to 2, 2 to 0))) to reverted
-                    3 -> return matchPartsForMap(presenterParts,candidateParts, map33 ) to reverted
-                }
             }
 
-            when {
-                presenterParts.size == 3 && candidateParts.size == 2 ->
-                    //return (matchParts(presenterParts,candidateParts, mapOf(0 to 0,2 to 1)) ||
-                    //    matchParts(presenterParts,candidateParts, mapOf(0 to 1,2 to 0)) ||
-                    //    matchParts(presenterParts,candidateParts, mapOf(0 to 0,1 to 1)) ||
-                    //    matchParts(presenterParts,candidateParts, mapOf(0 to 1,1 to 0)) ) to reverted
-                    return matchPartsForMap(presenterParts,candidateParts, map32 ) to reverted
-                presenterParts.size == 3 && candidateParts.size == 1 ->
-                    //return (matchParts(presenterParts,candidateParts, mapOf(0 to 0)) ||
-                    //    matchParts(presenterParts,candidateParts, mapOf(2 to 0))) to reverted
-                    return matchPartsForMap(presenterParts,candidateParts,
-                            map31 ) to reverted
-                presenterParts.size == 2 && candidateParts.size == 1 ->
-                    //return (matchParts(presenterParts,candidateParts, mapOf(0 to 0)) ||
-                    //    matchParts(presenterParts,candidateParts, mapOf(1 to 0))) to reverted
-                    return matchPartsForMap(presenterParts,candidateParts,
-                            map21 ) to reverted
-            }
+            var isMatch = matchParts(presenterParts,candidateParts)
 
-            return false to reverted
+            if (isMatch && reverted)
+               isMatch =  matchNewPresenterWithList(presenterParts)
+
+            return isMatch to reverted
         }
+
+        //матчит все члены группы (кроме представителя) с новым представителемЮ при условии что новый приоритетнее по размеру
+        private fun matchNewPresenterWithList(presenterParts:List<String>) =
+                list.all { author-> matchParts(presenterParts,trimValue(author).split(' ')) }
 
         fun add(value: String) = list.add(value)
 
@@ -280,13 +232,59 @@ class Aggregator {
             return sb.toString()
         }
 
+        //матчит представителя и кандидата при условии что представитель правильно предопределен в соответстви с приоритетом
+        private fun matchParts(presenterParts:List<String>, candidateParts:List<String>) : Boolean {
+            val map11 =  listOf(listOf(Triple(0,0,true)))  // Сидоров - Сидоров
+            val map22 = listOf(
+                    listOf(Triple(0,0,true),Triple(1,1,true)), // Сидоров Александр -> Сидоров Александр
+                    listOf(Triple(0,1,true),Triple(1,0,true)), // Сидоров Александр -> Александр Сидоров
+                    listOf(Triple(0,0,true),Triple(1,1,false)), // Сидоров Александр -> Сидоров А
+                    listOf(Triple(0,1,true),Triple(1,0,false))) // Сидоров Александр -> А Сидоров
+            val map33 = listOf (
+                    listOf(Triple(0,0,true),Triple(1,1,false),Triple(2,2,false)), // Сидоров Александр Петрович -> Сидоров А П
+                    listOf(Triple(0,2,false),Triple(1,0,false),Triple(2,1,false)),// Сидоров Александр Петрович -> А П Сидоров
+                    listOf(Triple(0,0,false),Triple(1,1,false),Triple(2,2,true)),// Александр Петрович Сидоров -> А П Сидоров
+                    listOf(Triple(0,1,false),Triple(1,2,false),Triple(2,0,true)))// Александр Петрович Сидоров -> Сидоров А П
+            val map21 = listOf(
+                    listOf(Triple(0,0,true)), // Сидоров Александр -> Сидоров
+                    listOf(Triple(1,0,true)))  // Александр Сидоров -> Сидоров
+            val map31 = listOf(
+                    listOf(Triple(0,0,true)), // Сидоров Александр Петрович -> Сидоров
+                    listOf(Triple(2,0,true)))  // Александр Петрович Сидоров -> Сидоров
+            val map32 = listOf(
+                    listOf(Triple(0,0,false),Triple(2,1,true)), // Александр Петрович Сидоров -> А Сидоров
+                    listOf(Triple(0,1,true),Triple(1,0,false)), // Сидоров Александр Петрович -> А Сидоров
+                    listOf(Triple(0,0,true),Triple(1,1,false)), // Сидоров Александр Петрович -> Сидоров А
+                    listOf(Triple(0,1,false),Triple(2,0,true))) // Александр Петрович Сидоров -> Сидоров А
+
+            return when {
+                presenterParts.size == candidateParts.size -> return when (presenterParts.size){
+                    1 -> matchPartsWithMap(presenterParts,candidateParts, map11 )
+                    2 -> matchPartsWithMap(presenterParts,candidateParts, map22 )
+                    3 -> matchPartsWithMap(presenterParts,candidateParts, map33 )
+                    else -> false
+                }
+                presenterParts.size == 3 && candidateParts.size == 2 -> matchPartsWithMap(presenterParts,candidateParts, map32 )
+                presenterParts.size == 3 && candidateParts.size == 1 -> matchPartsWithMap(presenterParts,candidateParts, map31 )
+                presenterParts.size == 2 && candidateParts.size == 1 -> matchPartsWithMap(presenterParts,candidateParts, map21 )
+                else -> false
+            }
+        }
+
+        //матчит презентера с кандидатом в соответствии с заданным мапом
         //triple.third -> full match required, else prefix match is enough
-        private fun matchPartsForMap(presenterParts:List<String>, candidateParts:List<String>,matchRequiredListMap:List<List<Triple<Int,Int,Boolean>>>) : Boolean {
+        private fun matchPartsWithMap(presenterParts:List<String>, candidateParts:List<String>,matchRequiredListMap:List<List<Triple<Int,Int,Boolean>>>) : Boolean {
             val matchMap = getMatchMap(presenterParts,candidateParts)
             return  matchRequiredListMap.any {  matchRequiredMap ->  matchRequiredMap.all { triple -> matchMap[triple.first][triple.second][if (triple.third) 0 else 1] }}
         }
 
-        //arrray[i][j][0] = true -> full match, arrray[i][j][1] = true - pref match
+
+        /*
+            Возвращает масссив совпадений 3х3 array[i][j][k]
+            где i и j индексы в представителе и кандидате соответственно, k - тип совпадения
+        */
+        //arrray[i][j][0] = true -> full match, полное совпадение
+        //arrray[i][j][1] = true - pref match, кандидат частично матчится на предстаителя
         private fun getMatchMap(presenterParts:List<String>, candidateParts:List<String>) : Array<Array<Array<Boolean>>> {
 
             val matchResultMap : Array<Array<Array<Boolean>>> = Array(3) { Array(3) { Array(2) { false } } }
