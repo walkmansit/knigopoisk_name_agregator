@@ -7,52 +7,66 @@ class DbManager {
 
     private var conn: Connection? = null
 
-    fun init() : Boolean {
+    //mysql server: 185.228.235.67:3306
+    //nagaevav / nJNOIPOP{230f9hj}|)(J3fk2ck023jf-fj2]f23
+
+    fun connectToServer() : Boolean {
+
+        println("connecting to mysql server...")
+
         val connectionProps = Properties()
-        connectionProps["user"] = "root"
-        connectionProps["password"] = "136316iq"
+        connectionProps["user"] = "nagaevav"
+        connectionProps["password"] = "nJNOIPOP{230f9hj}|)(J3fk2ck023jf-fj2]f23"
         try {
             Class.forName("com.mysql.cj.jdbc.Driver").newInstance()
             conn = DriverManager.getConnection(
                     "jdbc:" + "mysql" + "://" +
-                            "127.0.0.1" +
+                            "185.228.235.67" +
                             ":" + "3306" + "/" +
                             "",
                     connectionProps)
+            println("connecting to mysql server complete")
             return true
         } catch (ex: SQLException) {
             // handle any errors
+            println("connecting to mysql server failed")
             ex.printStackTrace()
             return false
         } catch (ex: Exception) {
             // handle any errors
+            println("connecting to mysql server failed")
             ex.printStackTrace()
             return false
         }
     }
 
-    fun execute(){
+    fun execute(query:String) : ResultSet ? {
         var stmt: Statement? = null
         var resultset: ResultSet? = null
 
-        try {
+        return try {
             stmt = conn!!.createStatement()
-            resultset = stmt!!.executeQuery("SELECT bp.id,bp.product_properties FROM knigopoiskdb.book24_products bp LIMIT 100")
-
-            while (resultset?.next() == true){
-                resultset.getInt("id")
-            }
-
-           /* if (stmt.execute("SELECT bp.id,bp.product_properties FROM knigopoiskdb.book24_products bp LIMIT 100")) {
-                resultset = stmt.resultSet
-            }*/
-
-            /*while (resultset!!.next()) {
-                println(resultset.getString("id"))
-            }*/
+            resultset = stmt!!.executeQuery(query)
+            resultset
         } catch (ex: SQLException) {
             // handle any errors
             ex.printStackTrace()
+            null
+        }
+    }
+
+    fun executeUpdate(query:String) : Int {
+        var stmt: Statement? = null
+
+        return try {
+            stmt = conn!!.createStatement()
+            stmt!!.executeUpdate(query)
+
+
+        } catch (ex: SQLException) {
+            // handle any errors
+            ex.printStackTrace()
+            0
         }
     }
 }

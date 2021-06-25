@@ -1,4 +1,4 @@
 package com.office14.namegrouper
 
-class AuthorRecordText(override var author: String) : AuthorRecord {
+class AuthorRecordText(override var value: String) : AuthorRecord {
 }

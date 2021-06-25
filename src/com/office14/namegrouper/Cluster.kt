@@ -5,11 +5,11 @@ import java.lang.StringBuilder
 
 class Cluster(var presenter:AuthorRecord){
 
-    private var presenterTrimmedBase = trimValue(presenter.author)
+    private var presenterTrimmedBase = trimValue(presenter.value)
 
     fun updatePresenter(value:AuthorRecord){
         presenter = value
-        presenterTrimmedBase = trimValue(presenter.author)
+        presenterTrimmedBase = trimValue(presenter.value)
     }
 
     //определяет можем ли мы добавить представителя в группу
@@ -17,8 +17,8 @@ class Cluster(var presenter:AuthorRecord){
     fun canAdd(candidate:AuthorRecord) : Pair< Boolean, Boolean > {
 
         var reverted = false
-        var candidateTrimmed = trimValue(candidate.author)
-        var presenterTrimmed = trimValue(presenter.author)
+        var candidateTrimmed = trimValue(candidate.value)
+        var presenterTrimmed = trimValue(presenter.value)
 
         var presenterParts = presenterTrimmed.split(' ')
         var candidateParts = candidateTrimmed.split(' ')
@@ -48,7 +48,7 @@ class Cluster(var presenter:AuthorRecord){
 
     //матчит все члены группы (кроме представителя) с новым представителемЮ при условии что новый приоритетнее по размеру
     private fun matchNewPresenterWithList(presenterParts:List<String>) =
-            list.all { author-> matchParts(presenterParts,trimValue(author.author).split(' ')) }
+            list.all { author-> matchParts(presenterParts,trimValue(author.value).split(' ')) }
 
     fun add(value: AuthorRecord) = list.add(value)
 

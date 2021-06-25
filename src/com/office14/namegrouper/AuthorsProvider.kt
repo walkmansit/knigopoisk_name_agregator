@@ -1,5 +1,5 @@
 package com.office14.namegrouper
 
-interface AuthorsProvider<AuthorRecord> {
+interface AuthorsProvider<out AuthorRecord> {
     fun provide() : Iterable<out AuthorRecord>
 }

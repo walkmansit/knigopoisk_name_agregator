@@ -7,7 +7,7 @@ class AuthorsCollectorToFile(private val fileName:String) : AuthorsCollector<Clu
         val outFileWriter = File(fileName).bufferedWriter()
 
         for (cluster in clusters){
-            for (item in cluster.toList()) outFileWriter.appendLine(item.author)
+            for (item in cluster.toList()) outFileWriter.appendLine(item.value)
             outFileWriter.appendLine()
         }
         outFileWriter.flush()
