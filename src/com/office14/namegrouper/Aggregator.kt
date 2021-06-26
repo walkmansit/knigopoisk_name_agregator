@@ -16,6 +16,7 @@ class Aggregator (private val provider:AuthorsProvider<out AuthorRecord>, privat
         val rows = sanitizer.sanitize( provider.provide())
 
         println("start grouping records")
+        val start = System.currentTimeMillis()
         for ((count, author) in rows.withIndex()){
 
             if (count != 0 && count % 10000 == 0)
@@ -39,6 +40,8 @@ class Aggregator (private val provider:AuthorsProvider<out AuthorRecord>, privat
             }
             if (!match) clusters.add(Cluster(author))
         }
+
+        println("grouping complete in ${(System.currentTimeMillis()-start)/1000} sec")
 
         /*val outFileWriter = outFile.bufferedWriter()
         val logFileWriter = logFile.bufferedWriter()

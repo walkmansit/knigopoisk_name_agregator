@@ -70,6 +70,8 @@ class Cluster(var presenter:AuthorRecord){
         }
     }
 
+    val members:List<AuthorRecord> = list
+
     private fun trimValue(value:String) : String {
         val sb = StringBuilder()
         var prev:Char? = null
